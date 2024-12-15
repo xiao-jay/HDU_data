@@ -1,0 +1,1 @@
+cmd_/home/dobychao/proj/ex2/list_all_process.ko := ld -r -m elf_x86_64  -z max-page-size=0x200000  --build-id  -T ./scripts/module-common.lds -o /home/dobychao/proj/ex2/list_all_process.ko /home/dobychao/proj/ex2/list_all_process.o /home/dobychao/proj/ex2/list_all_process.mod.o;  true
