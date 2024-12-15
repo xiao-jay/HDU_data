@@ -1,0 +1,160 @@
+import random
+import numpy as np
+import matplotlib.pyplot as plt
+from past.builtins import xrange
+%matplotlib inline
+plt.rcParams['figure.figsize'] = (8., 6.) # 设置默认大小
+plt.rcParams['image.interpolation'] = 'nearest'
+plt.rcParams['image.cmap'] = 'gray'
+
+%load_ext autoreload
+%autoreload 2
+
+# 读取提供的cifar10-mini数据集，
+data = np.load('cifar10-mini.npz')
+
+X_train= data['X_train']
+X_val= data['X_val']
+X_test= data['X_test']
+y_train= data['y_train']
+y_val= data['y_val']
+y_test= data['y_test']
+
+# 打印数据shape
+print(X_train.shape)
+print(X_val.shape)
+print(X_test.shape)
+
+from features import *
+
+# 本次作业不需要修改此部分代码
+# 选择特征处理函数
+feature_fns = [hog_feature, color_histogram_hsv]  # HOG + 颜色直方图
+# feature_fns = [color_histogram_hsv] # 颜色直方图
+# feature_fns = [hog_feature] # HOG
+
+X_train_feats = extract_features(X_train, feature_fns)
+X_val_feats = extract_features(X_val, feature_fns)
+X_test_feats = extract_features(X_test, feature_fns)
+
+# 预处理: 减去均值
+mean_feat = np.mean(X_train_feats, axis=0, keepdims=True)
+X_train_feats -= mean_feat
+
+mean_feat = np.mean(X_val_feats, axis=0, keepdims=True)
+X_val_feats -= mean_feat
+
+mean_feat = np.mean(X_test_feats, axis=0, keepdims=True)
+X_test_feats -= mean_feat
+
+# 预处理: 除以标准差，这能保证所有的值在 0～1 之间
+std_feat = np.std(X_train_feats, axis=0, keepdims=True)
+X_train_feats /= std_feat
+
+std_feat = np.std(X_val_feats, axis=0, keepdims=True)
+X_val_feats /= std_feat
+
+std_feat = np.std(X_test_feats, axis=0, keepdims=True)
+X_test_feats /= std_feat
+
+# 预处理: 增加一个偏置值，在 K-NN 中，该步操作并无必要，但增加偏置值对其他分类器如 SVM 等有帮助。
+X_train_feats = np.hstack([X_train_feats, np.ones((X_train_feats.shape[0], 1))])
+X_val_feats = np.hstack([X_val_feats, np.ones((X_val_feats.shape[0], 1))])
+X_test_feats = np.hstack([X_test_feats, np.ones((X_test_feats.shape[0], 1))])
+
+print(X_train_feats.shape)
+print(X_val_feats.shape)
+print(X_val_feats.shape)
+
+# 查看数据集中的图片：
+# for i in range len(X_train_feats):
+#    plt.imshow(X_train[i].astype(int))
+
+
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.metrics import classification_report
+
+#######################################################################
+# TODO:                                                               #
+# 通过sklearn库的决策树模型对图像进行分类，并进行结果评估             #
+#######################################################################
+"""你的代码"""
+
+# 组合训练集和验证集
+# np.concatenate()函数可以组合数据
+X_train_val_feats = np.concatenate([X_train_feats, X_val_feats])
+y_train_val = np.concatenate([y_train, y_val])
+
+# 调用DecisionTreeClassifier接口，创建模型。
+model = DecisionTreeClassifier(criterion='gini', splitter='best', max_depth=None)
+
+# 训练模型，并测试。
+# 使用模型的".fit()"方法进行训练，并用".predict()"方法预测。
+model.fit(X_train_val_feats, y_train_val)
+y_test_predict = model.predict(X_test_feats)
+
+# 查看 查准率、查全率 等指标
+# classification_report接口可以查看各类别的查准率、查全率等指标
+print(classfication_report(y_test, y_test_predict))
+#######################################################################
+#                         END OF YOUR CODE                            #
+#######################################################################
+
+#决策树：https://blog.csdn.net/Cyril_KI/article/details/107162316?ops_request_misc=%257B%2522request%255Fid%2522%253A%2522163867497116780271998774%2522%252C%2522scm%2522%253A%252220140713.130102334.pc%255Fall.%2522%257D&request_id=163867497116780271998774&biz_id=0&utm_medium=distribute.pc_search_result.none-task-blog-2~all~first_rank_ecpm_v1~hot_rank-2-107162316.first_rank_v2_pc_rank_v29&utm_term=%E5%86%B3%E7%AD%96%E6%A0%91&spm=1018.2226.3001.4187
+#决策树调参：https://blog.csdn.net/weixin_43897389/article/details/107205054?ops_request_misc=&request_id=&biz_id=102&utm_term=%E5%86%B3%E7%AD%96%E6%A0%91%E6%A0%91%E6%B7%B1%E6%80%8E%E4%B9%88%E8%AE%BE%E7%BD%AE&utm_medium=distribute.pc_search_result.none-task-blog-2~all~sobaiduweb~default-2-107205054.first_rank_v2_pc_rank_v29&spm=1018.2226.3001.4187
+
+from sklearn.svm import SVC
+
+#######################################################################
+# TODO:                                                               #
+# 使用不同的核函数作为SVM模型的参数，选择验证集上准确率最好的SVM核函数#
+#######################################################################
+"""你的代码"""
+# 提示：核函数的选择可以通过SVC的kernel属性传入
+# 常见的核函数有'linear','poly','rbf','sigmoid'
+He_list = ['linear', 'poly', 'rbf', 'sigmoid']
+
+for i in He_list:
+    # 核函数的选择可以通过SVC的kernel属性传入
+    classifier = SVC(kernel=i)
+    # 训练分类器
+    classifier.fit(X_train_feats, y_train)
+    # 利用验证集预测
+    y_val_predict = classifier.predict(X_val_feats)
+
+    res_list = [y_val_predict == y_val]
+    Acc = sum(res_list[0]) / len(res_list[0])
+    print(i + ":", Acc)
+
+# function rbf is the best.
+#######################################################################
+#                         END OF YOUR CODE                            #
+#######################################################################
+
+from sklearn.metrics import classification_report
+
+#######################################################################
+# TODO:                                                               #
+# 组合训练集和验证集，训练SVM模型，并在测试集上评估                   #
+#######################################################################
+"""你的代码"""
+
+# 组合训练集和验证集
+# np.concatenate()函数可以组合数据
+X_train_val_feats = np.concatenate([X_train_feats, X_val_feats])
+y_train_val = np.concatenate([y_train, y_val])
+
+# 调用SVC接口，并使用上面选择的核函数，创建模型。
+model = SVC(kernel = 'rbf')
+
+# 训练模型，并测试。
+# 使用模型的".fit()"方法进行训练，并用".predict()"方法预测。
+model.fit(X_train_val_feats, y_train_val)
+y_test_predict = model.predict(X_test_feats)
+
+# 查看 查准率、查全率 等指标
+# classification_report接口可以查看各类别的查准率、查全率等指标
+print(classification_report(y_test_pre, y_test))
+#######################################################################
+#                         END OF YOUR CODE                            #
+#######################################################################
