@@ -11,6 +11,7 @@
 感谢以下贡献者：
 
 [lyle](https://github.com/lyleshaw)
+[TinyyTomato](https://github.com/TinyyTomato)
 
 ## 03下载单个文件夹小技巧
 
